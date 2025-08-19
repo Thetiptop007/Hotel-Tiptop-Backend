@@ -52,6 +52,22 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
+// Root endpoint for health check
+app.get('/', (req, res) => {
+    res.status(200).json({
+        success: true,
+        message: 'Hotel Tiptop API Server',
+        version: '1.0.0',
+        endpoints: {
+            health: '/api/health',
+            auth: '/api/auth',
+            bookings: '/api/bookings',
+            analytics: '/api/analytics'
+        },
+        timestamp: new Date().toISOString(),
+    });
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
     res.status(200).json({
