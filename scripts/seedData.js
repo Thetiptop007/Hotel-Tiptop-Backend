@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
-const Customer = require('../models/Customer');
 const Booking = require('../models/Booking');
 require('dotenv').config();
 
@@ -13,7 +12,6 @@ const seedData = async () => {
 
         // Clear existing data
         await User.deleteMany({});
-        await Customer.deleteMany({});
         await Booking.deleteMany({});
         console.log('Cleared existing data');
 

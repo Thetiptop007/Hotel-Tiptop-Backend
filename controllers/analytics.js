@@ -1,4 +1,3 @@
-const Customer = require('../models/Customer');
 const Booking = require('../models/Booking');
 const CustomerSummary = require('../models/CustomerSummary');
 const { sendResponse, getTwoYearsDateRange } = require('../utils/helpers');

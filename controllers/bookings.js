@@ -1,6 +1,5 @@
 const { validationResult } = require('express-validator');
 const Booking = require('../models/Booking');
-const Customer = require('../models/Customer');
 const { sendResponse, generateSerialNo, generateEntryNo } = require('../utils/helpers');
 
 // @desc    Get all bookings with pagination, search, and filters - Optimized for large datasets
@@ -529,6 +528,78 @@ exports.getBookingStats = async (req, res, next) => {
             recentBookings: result.recentBookings
         });
 
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Search customer by mobile or aadhaar (from booking records)
+// @route   GET /api/bookings/search-customer
+// @access  Private
+exports.searchCustomer = async (req, res, next) => {
+    try {
+        const { mobile, aadhaar } = req.query;
+
+        if (!mobile && !aadhaar) {
+            return sendResponse(res, 400, false, 'Mobile number or Aadhaar number is required');
+        }
+
+        // Build search query
+        const query = {};
+        if (mobile) query.customerMobile = mobile;
+        if (aadhaar) {
+            // Format Aadhaar if needed
+            let formattedAadhaar = aadhaar;
+            if (aadhaar && !aadhaar.includes('-')) {
+                const numbers = aadhaar.replace(/\D/g, '');
+                if (numbers.length === 12) {
+                    formattedAadhaar = `${numbers.slice(0, 4)}-${numbers.slice(4, 8)}-${numbers.slice(8, 12)}`;
+                }
+            }
+            query.customerAadhaar = formattedAadhaar;
+        }
+
+        // Find all bookings for this customer
+        const bookings = await Booking.find({
+            $or: Object.keys(query).map(key => ({ [key]: query[key] }))
+        }).sort({ createdAt: -1 });
+
+        if (!bookings || bookings.length === 0) {
+            return sendResponse(res, 404, false, 'Customer not found', { found: false });
+        }
+
+        // Get customer info from the most recent booking
+        const latestBooking = bookings[0];
+
+        // Calculate statistics
+        const totalBookings = bookings.length;
+        const totalSpent = bookings.reduce((sum, booking) => sum + (booking.rent || 0), 0);
+        const lastVisit = latestBooking.checkIn;
+
+        const customerData = {
+            name: latestBooking.customerName,
+            mobile: latestBooking.customerMobile,
+            aadhaar: latestBooking.customerAadhaar,
+            totalBookings,
+            totalSpent,
+            lastVisit,
+            bookings: bookings.map(booking => ({
+                _id: booking._id,
+                serialNo: booking.serialNo,
+                entryNo: booking.entryNo,
+                room: booking.room,
+                rent: booking.rent,
+                checkIn: booking.checkIn,
+                checkOut: booking.checkOut,
+                status: booking.status,
+                totalAmount: booking.totalAmount || booking.rent
+            }))
+        };
+
+        sendResponse(res, 200, true, 'Customer found', {
+            found: true,
+            customer: customerData
+        });
     } catch (error) {
         next(error);
     }

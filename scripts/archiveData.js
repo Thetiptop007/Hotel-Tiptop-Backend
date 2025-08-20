@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const Customer = require('../models/Customer');
 const Booking = require('../models/Booking');
 const CustomerSummary = require('../models/CustomerSummary');
 require('dotenv').config();

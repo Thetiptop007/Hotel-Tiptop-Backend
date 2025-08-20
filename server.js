@@ -9,7 +9,6 @@ require('dotenv').config();
 
 // Import routes
 const authRoutes = require('./routes/auth');
-const customerRoutes = require('./routes/customers');
 const bookingRoutes = require('./routes/bookings');
 const analyticsRoutes = require('./routes/analytics');
 
@@ -48,7 +47,6 @@ if (process.env.NODE_ENV === 'development') {
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/customers', customerRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/analytics', analyticsRoutes);
 

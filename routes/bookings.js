@@ -10,7 +10,8 @@ const {
     getBookingsByDateRange,
     updateBookingStatus,
     advancedSearch,
-    getBookingStats
+    getBookingStats,
+    searchCustomer
 } = require('../controllers/bookings');
 const { protect } = require('../middleware/auth');
 
@@ -81,6 +82,9 @@ router.route('/advanced-search')
 
 router.route('/stats')
     .get(getBookingStats);
+
+router.route('/search-customer')
+    .get(searchCustomer);
 
 router.route('/date-range')
     .get(getBookingsByDateRange);
