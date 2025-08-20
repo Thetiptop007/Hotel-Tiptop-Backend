@@ -97,16 +97,6 @@ exports.getDashboardStats = async (req, res, next) => {
             recentCustomers: stats.recentBookings || [] // Named as recentCustomers for frontend compatibility
         };
 
-        console.log('Dashboard stats raw data:', {
-            totalBookings: stats.totalBookings,
-            todayRevenue: stats.todayRevenue,
-            activeBookings: stats.activeBookings,
-            totalRevenue: stats.totalRevenue,
-            todayDateRange: { startOfToday, endOfToday }
-        });
-
-        console.log('Dashboard stats calculated:', result.stats);
-
         sendResponse(res, 200, true, 'Dashboard statistics retrieved successfully', result);
     } catch (error) {
         console.error('Dashboard stats error:', error);

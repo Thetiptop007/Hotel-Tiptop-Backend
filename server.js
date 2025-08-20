@@ -98,19 +98,54 @@ const PORT = process.env.PORT || 5000;
 const startServer = async () => {
     await connectDB();
 
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
         console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
     });
+
+    // Keep-alive mechanism to prevent Render from sleeping
+    if (process.env.NODE_ENV === 'production') {
+        const keepAlive = () => {
+            const url = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+
+            setInterval(async () => {
+                try {
+                    const https = require('https');
+                    const http = require('http');
+                    const client = url.startsWith('https') ? https : http;
+
+                    client.get(`${url}/api/health`, (res) => {
+                        console.log(`Keep-alive ping: ${res.statusCode}`);
+                    }).on('error', (err) => {
+                        console.log('Keep-alive ping failed:', err.message);
+                    });
+                } catch (error) {
+                    console.log('Keep-alive error:', error.message);
+                }
+            }, 14 * 60 * 1000); // Ping every 14 minutes (Render sleeps after 15 minutes)
+        };
+
+        // Start keep-alive after 2 minutes
+        setTimeout(keepAlive, 2 * 60 * 1000);
+        console.log('Keep-alive service started for production environment');
+    }
+
+    return server;
 };
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err, promise) => {
     console.log(`Error: ${err.message}`);
-    server.close(() => {
-        process.exit(1);
-    });
+    // Note: server variable is not available here, process will exit
+    process.exit(1);
 });
 
-startServer();
+// Start server and store reference
+let serverInstance;
+startServer().then(server => {
+    serverInstance = server;
+}).catch(err => {
+    console.error('Failed to start server:', err);
+    process.exit(1);
+});
 
 module.exports = app;
