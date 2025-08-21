@@ -11,6 +11,7 @@ require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const bookingRoutes = require('./routes/bookings');
 const analyticsRoutes = require('./routes/analytics');
+const uploadRoutes = require('./routes/upload');
 
 // Import middleware
 const { errorHandler } = require('./middleware/errorHandler');
@@ -48,6 +49,7 @@ if (process.env.NODE_ENV === 'development') {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/upload', uploadRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
 // Root endpoint for health check

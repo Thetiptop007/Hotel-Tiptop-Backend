@@ -1,6 +1,7 @@
 const { validationResult } = require('express-validator');
 const Booking = require('../models/Booking');
 const { sendResponse, generateSerialNo, generateEntryNo } = require('../utils/helpers');
+const cloudinaryService = require('../services/cloudinary');
 
 // @desc    Get all bookings with pagination, search, and filters - Optimized for large datasets
 // @route   GET /api/bookings
@@ -101,6 +102,9 @@ exports.getBookings = async (req, res, next) => {
                     totalAmount: 1,
                     createdAt: 1,
                     updatedAt: 1,
+                    documents: 1,
+                    documentPublicIds: 1,
+                    documentTypes: 1,
                     ...(search.length >= 3 && matchQuery.$text ? { score: 1 } : {})
                 }
             }
@@ -153,14 +157,16 @@ exports.createBooking = async (req, res, next) => {
             rent,
             checkIn,
             checkOut,
-            status = 'checked-in'
+            status = 'checked-in',
+            documents = [],
+            documentMetadata = null
         } = req.body;
 
         // Generate unique identifiers
         const serialNo = generateSerialNo();
         const entryNo = generateEntryNo();
 
-        // Create booking with embedded customer data
+        // Create booking with embedded customer data and document info
         const newBooking = new Booking({
             serialNo,
             entryNo,
@@ -171,7 +177,13 @@ exports.createBooking = async (req, res, next) => {
             rent,
             checkIn: new Date(checkIn),
             checkOut: checkOut ? new Date(checkOut) : null,
-            status
+            status,
+            documents,
+            // Store document metadata for Cloudinary management
+            ...(documentMetadata && {
+                documentPublicIds: [documentMetadata.publicId],
+                documentTypes: [documentMetadata.type]
+            })
         });
 
         const savedBooking = await newBooking.save();
@@ -243,10 +255,25 @@ exports.deleteBooking = async (req, res, next) => {
             return sendResponse(res, 404, false, 'Booking not found');
         }
 
+        // Delete associated documents from Cloudinary
+        if (booking.documentPublicIds && booking.documentPublicIds.length > 0) {
+            console.log('Deleting documents from Cloudinary:', booking.documentPublicIds);
+            const deleteResult = await cloudinaryService.deleteImages(booking.documentPublicIds);
+
+            if (!deleteResult.success) {
+                console.warn('Some documents could not be deleted from Cloudinary:', deleteResult);
+                // Continue with booking deletion even if Cloudinary deletion fails
+            } else {
+                console.log(`Successfully deleted ${deleteResult.successful} documents from Cloudinary`);
+            }
+        }
+
+        // Delete the booking from database
         await Booking.findByIdAndDelete(req.params.id);
 
-        sendResponse(res, 200, true, 'Booking deleted successfully');
+        sendResponse(res, 200, true, 'Booking and associated documents deleted successfully');
     } catch (error) {
+        console.error('Error deleting booking:', error);
         next(error);
     }
 };

@@ -69,6 +69,13 @@ const bookingSchema = new mongoose.Schema({
     documents: [{
         type: String // Cloudinary URLs
     }],
+    documentPublicIds: [{
+        type: String // Cloudinary public IDs for deletion
+    }],
+    documentTypes: [{
+        type: String, // Type of document (e.g., 'aadhaar', 'passport', etc.)
+        enum: ['aadhaar', 'passport', 'driving-license', 'other']
+    }],
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
