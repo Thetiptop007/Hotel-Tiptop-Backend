@@ -33,10 +33,12 @@ const isValidMobile = (mobile) => {
     return mobileRegex.test(mobile);
 };
 
-// Calculate days between two dates
+// Calculate days between two dates (minimum 1 day for same-day checkout)
 const calculateDays = (checkIn, checkOut) => {
     const timeDiff = new Date(checkOut) - new Date(checkIn);
-    return Math.ceil(timeDiff / (1000 * 3600 * 24));
+    const days = Math.ceil(timeDiff / (1000 * 3600 * 24));
+    // Ensure minimum 1 day for same-day checkout
+    return Math.max(days, 1);
 };
 
 // Get date range for last 2 years

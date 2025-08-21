@@ -73,8 +73,8 @@ const bookingSchema = new mongoose.Schema({
         type: String // Cloudinary public IDs for deletion
     }],
     documentTypes: [{
-        type: String, // Type of document (e.g., 'aadhaar', 'passport', etc.)
-        enum: ['aadhaar', 'passport', 'driving-license', 'other']
+        type: String, // Type of document (e.g., 'aadhaar-front', 'aadhaar-back', etc.)
+        enum: ['aadhaar', 'aadhaar-front', 'aadhaar-back', 'passport', 'driving-license', 'other']
     }],
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
@@ -91,10 +91,10 @@ const bookingSchema = new mongoose.Schema({
     }
 });
 
-// Validate check-out date is after check-in date (only when checkOut is provided)
+// Validate check-out date is not before check-in date (same day checkout allowed)
 bookingSchema.pre('validate', function (next) {
-    if (this.checkOut && this.checkIn && this.checkOut <= this.checkIn) {
-        next(new Error('Check-out date must be after check-in date'));
+    if (this.checkOut && this.checkIn && this.checkOut < this.checkIn) {
+        next(new Error('Check-out date cannot be before check-in date'));
     } else {
         next();
     }
@@ -104,7 +104,8 @@ bookingSchema.pre('validate', function (next) {
 bookingSchema.pre('save', function (next) {
     if (this.checkIn && this.checkOut && this.rent) {
         const days = Math.ceil((this.checkOut - this.checkIn) / (1000 * 60 * 60 * 24));
-        this.totalAmount = days * this.rent;
+        // Ensure minimum 1 day charge for same-day checkout
+        this.totalAmount = Math.max(days, 1) * this.rent;
     }
     this.updatedAt = Date.now();
     next();

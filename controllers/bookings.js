@@ -159,7 +159,8 @@ exports.createBooking = async (req, res, next) => {
             checkOut,
             status = 'checked-in',
             documents = [],
-            documentMetadata = null
+            documentTypes = [],
+            documentPublicIds = []
         } = req.body;
 
         // Generate unique identifiers
@@ -179,11 +180,8 @@ exports.createBooking = async (req, res, next) => {
             checkOut: checkOut ? new Date(checkOut) : null,
             status,
             documents,
-            // Store document metadata for Cloudinary management
-            ...(documentMetadata && {
-                documentPublicIds: [documentMetadata.publicId],
-                documentTypes: [documentMetadata.type]
-            })
+            documentPublicIds,
+            documentTypes
         });
 
         const savedBooking = await newBooking.save();
