@@ -105,6 +105,8 @@ exports.getBookings = async (req, res, next) => {
                     documents: 1,
                     documentPublicIds: 1,
                     documentTypes: 1,
+                    groupSize: 1,
+                    additionalGuests: 1,
                     ...(search.length >= 3 && matchQuery.$text ? { score: 1 } : {})
                 }
             }
@@ -160,7 +162,9 @@ exports.createBooking = async (req, res, next) => {
             status = 'checked-in',
             documents = [],
             documentTypes = [],
-            documentPublicIds = []
+            documentPublicIds = [],
+            additionalGuests = [],
+            groupSize
         } = req.body;
 
         // Generate unique identifiers
@@ -168,7 +172,7 @@ exports.createBooking = async (req, res, next) => {
         const entryNo = generateEntryNo();
 
         // Create booking with embedded customer data and document info
-        const newBooking = new Booking({
+        const bookingData = {
             serialNo,
             entryNo,
             customerName,
@@ -181,15 +185,41 @@ exports.createBooking = async (req, res, next) => {
             status,
             documents,
             documentPublicIds,
-            documentTypes
-        });
+            documentTypes,
+            additionalGuests,
+            groupSize: groupSize || (1 + (additionalGuests ? additionalGuests.length : 0))
+        };
 
+        const newBooking = new Booking(bookingData);
         const savedBooking = await newBooking.save();
-
-        console.log('Booking created successfully:', savedBooking);
 
         sendResponse(res, 201, true, 'Booking created successfully', { booking: savedBooking });
     } catch (error) {
+        console.error('=== BOOKING CREATION ERROR ===');
+        console.error('Error name:', error.name);
+        console.error('Error message:', error.message);
+        console.error('Full error:', error);
+
+        // Handle Mongoose validation errors
+        if (error.name === 'ValidationError') {
+            console.error('MONGOOSE VALIDATION ERROR DETAILS:');
+            const errors = Object.values(error.errors).map((err, index) => {
+                console.error(`Validation Error ${index + 1}:`, {
+                    field: err.path,
+                    message: err.message,
+                    value: err.value,
+                    kind: err.kind
+                });
+                return {
+                    field: err.path,
+                    message: err.message,
+                    value: err.value
+                };
+            });
+            console.error('All validation errors:', errors);
+            return sendResponse(res, 400, false, 'Validation failed', { errors });
+        }
+
         if (error.code === 11000) {
             const field = Object.keys(error.keyValue)[0];
             const message = `A booking with this ${field} already exists`;
@@ -462,6 +492,8 @@ exports.advancedSearch = async (req, res, next) => {
                     checkOut: 1,
                     status: 1,
                     totalAmount: 1,
+                    groupSize: 1,
+                    additionalGuests: 1,
                     ...(query.length >= 3 && matchQuery.$text ? { score: 1 } : {})
                 }
             }

@@ -28,6 +28,58 @@ const bookingSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    // Group booking support - additional guests
+    groupSize: {
+        type: Number,
+        default: 1,
+        min: [1, 'Group size must be at least 1'],
+        max: [20, 'Group size cannot exceed 20 people']
+    },
+    additionalGuests: [{
+        name: {
+            type: String,
+            required: true,
+            trim: true,
+            maxlength: [100, 'Guest name cannot exceed 100 characters']
+        },
+        mobile: {
+            type: String,
+            required: false,
+            validate: {
+                validator: function (v) {
+                    // Only validate if value is provided and not empty
+                    return !v || v === '' || /^[6-9]\d{9}$/.test(v);
+                },
+                message: 'Please enter a valid mobile number (10 digits starting with 6-9)'
+            }
+        },
+        aadhaar: {
+            type: String,
+            required: false,
+            validate: {
+                validator: function (v) {
+                    // Only validate if value is provided and not empty
+                    return !v || v === '' || /^\d{4}-\d{4}-\d{4}$/.test(v);
+                },
+                message: 'Please enter Aadhaar in XXXX-XXXX-XXXX format'
+            }
+        },
+        documents: [{
+            type: String // Cloudinary URLs for this guest's documents
+        }],
+        documentPublicIds: [{
+            type: String // Cloudinary public IDs for this guest's documents
+        }],
+        documentTypes: [{
+            type: String,
+            enum: ['aadhaar', 'aadhaar-front', 'aadhaar-back', 'passport', 'driving-license', 'other']
+        }],
+        relationship: {
+            type: String,
+            default: 'Guest',
+            maxlength: [50, 'Relationship cannot exceed 50 characters']
+        }
+    }],
     room: {
         type: String,
         required: false,
@@ -102,6 +154,9 @@ bookingSchema.pre('validate', function (next) {
 
 // Calculate total amount based on dates and rent
 bookingSchema.pre('save', function (next) {
+    // Update group size based on additional guests
+    this.groupSize = 1 + (this.additionalGuests ? this.additionalGuests.length : 0);
+
     if (this.checkIn && this.checkOut && this.rent) {
         const days = Math.ceil((this.checkOut - this.checkIn) / (1000 * 60 * 60 * 24));
         // Ensure minimum 1 day charge for same-day checkout
@@ -124,18 +179,22 @@ bookingSchema.index({ customerMobile: 1, status: 1 }); // Customer search with s
 bookingSchema.index({ checkIn: 1, checkOut: 1 }); // Date range queries
 bookingSchema.index({ rent: -1, checkIn: -1 }); // Sort by rent with date
 
-// Text index for full-text search across multiple fields
+// Text index for full-text search across multiple fields including additional guests
 bookingSchema.index({
     customerName: 'text',
     customerMobile: 'text',
     room: 'text',
-    serialNo: 'text'
+    serialNo: 'text',
+    'additionalGuests.name': 'text',
+    'additionalGuests.mobile': 'text'
 }, {
     weights: {
         customerName: 10,
         customerMobile: 8,
         serialNo: 6,
-        room: 4
+        room: 4,
+        'additionalGuests.name': 7,
+        'additionalGuests.mobile': 5
     },
     name: 'booking_text_index'
 });

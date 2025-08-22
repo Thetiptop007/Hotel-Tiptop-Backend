@@ -56,7 +56,30 @@ const bookingValidation = [
     body('status')
         .optional()
         .isIn(['checked-in', 'checked-out'])
-        .withMessage('Status must be either checked-in or checked-out')
+        .withMessage('Status must be either checked-in or checked-out'),
+    // Validation for additional guests (group booking)
+    body('additionalGuests')
+        .optional()
+        .isArray()
+        .withMessage('Additional guests must be an array'),
+    body('additionalGuests.*.name')
+        .optional()
+        .isLength({ min: 2, max: 100 })
+        .withMessage('Guest name must be between 2 and 100 characters')
+        .matches(/^[a-zA-Z\s]+$/)
+        .withMessage('Guest name can only contain letters and spaces'),
+    body('additionalGuests.*.mobile')
+        .optional()
+        .matches(/^[0-9]{10}$/)
+        .withMessage('Guest mobile number must be exactly 10 digits'),
+    body('additionalGuests.*.aadhaar')
+        .optional()
+        .matches(/^[0-9]{4}-[0-9]{4}-[0-9]{4}$/)
+        .withMessage('Guest Aadhaar number must be in format XXXX-XXXX-XXXX'),
+    body('groupSize')
+        .optional()
+        .isInt({ min: 1, max: 20 })
+        .withMessage('Group size must be between 1 and 20')
 ];
 
 // Validation for status update
