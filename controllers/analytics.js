@@ -75,7 +75,9 @@ exports.getDashboardStats = async (req, res, next) => {
                                 checkIn: 1,
                                 checkOut: 1,
                                 status: 1,
-                                createdAt: 1
+                                createdAt: 1,
+                                groupSize: 1,
+                                additionalGuests: 1
                             }
                         }
                     ]

@@ -5,6 +5,12 @@ require('dotenv').config({ path: path.join(__dirname, '../.env') });
 // Import models
 const User = require('../models/User');
 
+// Admin details variables
+const adminUsername = 'admin';
+const adminEmail = 'admin@tiptophotel.com';
+const adminPassword = 'admin123';
+const adminRole = 'admin';
+
 // Connect to MongoDB
 const connectDB = async () => {
     try {
@@ -28,19 +34,19 @@ const createAdminUser = async () => {
             process.exit(0);
         }
 
-        // Create admin user
+        // Create admin user using variables
         const adminUser = await User.create({
-            username: 'admin',
-            email: 'admin@tiptophotel.com',
-            password: 'admin123',
-            role: 'admin'
+            username: adminUsername,
+            email: adminEmail,
+            password: adminPassword,
+            role: adminRole
         });
 
         console.log('Admin user created successfully:');
-        console.log('Username: admin');
-        console.log('Password: admin123');
-        console.log('Email: admin@tiptophotel.com');
-        console.log('Role: admin');
+        console.log('Username:', adminUsername);
+        console.log('Password:', adminPassword);
+        console.log('Email:', adminEmail);
+        console.log('Role:', adminRole);
 
         process.exit(0);
     } catch (error) {
