@@ -6,10 +6,22 @@ require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const User = require('../models/User');
 
 // Admin details variables
-const adminUsername = 'admin';
-const adminEmail = 'admin@tiptophotel.com';
-const adminPassword = 'admin123';
+const adminUsername = 'shabbir';
+const adminEmail = 'thetiptop007@gmail.com';
+const adminPassword = 'tiptop2025';
 const adminRole = 'admin';
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Connect to MongoDB
 const connectDB = async () => {

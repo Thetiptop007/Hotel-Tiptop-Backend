@@ -155,8 +155,9 @@ exports.createBooking = async (req, res, next) => {
             customerName,
             customerMobile,
             customerAadhaar,
-            room,
+            entryNo,
             rent,
+            room,
             checkIn,
             checkOut,
             status = 'checked-in',
@@ -169,12 +170,24 @@ exports.createBooking = async (req, res, next) => {
 
         // Generate unique identifiers
         const serialNo = generateSerialNo();
-        const entryNo = generateEntryNo();
+        
+        // Validate and check if entryNo already exists
+        if (!entryNo || entryNo.trim().length === 0) {
+            return sendResponse(res, 400, false, 'Entry number is required');
+        }
+
+        const trimmedEntryNo = entryNo.trim();
+
+        // Check if entry number already exists
+        const existingBooking = await Booking.findOne({ entryNo: trimmedEntryNo });
+        if (existingBooking) {
+            return sendResponse(res, 400, false, 'Entry number already exists. Please use a different entry number.');
+        }
 
         // Create booking with embedded customer data and document info
         const bookingData = {
             serialNo,
-            entryNo,
+            entryNo: trimmedEntryNo,
             customerName,
             customerMobile,
             customerAadhaar,

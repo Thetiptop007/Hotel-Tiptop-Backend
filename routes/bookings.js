@@ -31,6 +31,13 @@ const bookingValidation = [
         .optional()
         .matches(/^[0-9]{4}-[0-9]{4}-[0-9]{4}$/)
         .withMessage('Aadhaar number must be in format XXXX-XXXX-XXXX'),
+    body('entryNo')
+        .notEmpty()
+        .withMessage('Entry number is required')
+        .isLength({ min: 2, max: 20 })
+        .withMessage('Entry number must be between 2 and 20 characters')
+        .matches(/^[a-zA-Z0-9_-]+$/)
+        .withMessage('Entry number can only contain letters, numbers, hyphens, and underscores'),
     body('room')
         .optional()
         .isLength({ min: 1, max: 10 })
