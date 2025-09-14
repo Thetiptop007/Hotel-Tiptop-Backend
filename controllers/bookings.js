@@ -170,7 +170,7 @@ exports.createBooking = async (req, res, next) => {
 
         // Generate unique identifiers
         const serialNo = generateSerialNo();
-        
+
         // Validate and check if entryNo already exists
         if (!entryNo || entryNo.trim().length === 0) {
             return sendResponse(res, 400, false, 'Entry number is required');
@@ -653,6 +653,12 @@ exports.searchCustomer = async (req, res, next) => {
             totalBookings,
             totalSpent,
             lastVisit,
+            visitCount: totalBookings,
+            // Include document information from the latest booking if available
+            documents: latestBooking.documents || [],
+            documentTypes: latestBooking.documentTypes || [],
+            aadhaarFrontUrl: null,
+            aadhaarBackUrl: null,
             bookings: bookings.map(booking => ({
                 _id: booking._id,
                 serialNo: booking.serialNo,
@@ -665,6 +671,17 @@ exports.searchCustomer = async (req, res, next) => {
                 totalAmount: booking.totalAmount || booking.rent
             }))
         };
+
+        // Extract Aadhaar document URLs if available
+        if (latestBooking.documents && latestBooking.documentTypes) {
+            latestBooking.documentTypes.forEach((type, index) => {
+                if (type === 'aadhaar-front' && latestBooking.documents[index]) {
+                    customerData.aadhaarFrontUrl = latestBooking.documents[index];
+                } else if (type === 'aadhaar-back' && latestBooking.documents[index]) {
+                    customerData.aadhaarBackUrl = latestBooking.documents[index];
+                }
+            });
+        }
 
         sendResponse(res, 200, true, 'Customer found', {
             found: true,
