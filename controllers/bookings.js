@@ -629,10 +629,68 @@ exports.searchCustomer = async (req, res, next) => {
             query.customerAadhaar = formattedAadhaar;
         }
 
-        // Find all bookings for this customer
-        const bookings = await Booking.find({
+        // Find all bookings for this customer (both as main customer and as additional guest)
+        let bookings = [];
+        let guestData = null;
+        let isGuest = false;
+
+        // First, search in main customers
+        const mainCustomerBookings = await Booking.find({
             $or: Object.keys(query).map(key => ({ [key]: query[key] }))
         }).sort({ createdAt: -1 });
+
+        if (mainCustomerBookings && mainCustomerBookings.length > 0) {
+            bookings = mainCustomerBookings;
+        } else {
+            // If not found as main customer, search in additionalGuests
+            const guestSearchQuery = [];
+
+            if (mobile) {
+                guestSearchQuery.push({ 'additionalGuests.mobile': mobile });
+            }
+            if (aadhaar) {
+                let formattedAadhaar = aadhaar;
+                if (aadhaar && !aadhaar.includes('-')) {
+                    const numbers = aadhaar.replace(/\D/g, '');
+                    if (numbers.length === 12) {
+                        formattedAadhaar = `${numbers.slice(0, 4)}-${numbers.slice(4, 8)}-${numbers.slice(8, 12)}`;
+                    }
+                }
+                guestSearchQuery.push({ 'additionalGuests.aadhaar': formattedAadhaar });
+            }
+
+            if (guestSearchQuery.length > 0) {
+                console.log('Searching for guest with query:', guestSearchQuery);
+                
+                const guestBookings = await Booking.find({
+                    $or: guestSearchQuery
+                }).sort({ createdAt: -1 });
+
+                console.log('Found guest bookings:', guestBookings.length);
+
+                if (guestBookings && guestBookings.length > 0) {
+                    bookings = guestBookings;
+                    isGuest = true;
+
+                    // Find the specific guest data from the most recent booking
+                    const latestBooking = guestBookings[0];
+                    console.log('Latest booking additional guests:', latestBooking.additionalGuests);
+                    
+                    if (latestBooking.additionalGuests && latestBooking.additionalGuests.length > 0) {
+                        const targetAadhaar = aadhaar.includes('-') ? aadhaar : formattedAadhaar;
+                        console.log('Looking for guest with aadhaar:', targetAadhaar, 'or mobile:', mobile);
+                        
+                        guestData = latestBooking.additionalGuests.find(guest => {
+                            console.log('Checking guest:', guest.name, 'mobile:', guest.mobile, 'aadhaar:', guest.aadhaar);
+                            return (mobile && guest.mobile === mobile) ||
+                                   (aadhaar && guest.aadhaar === targetAadhaar);
+                        });
+                        
+                        console.log('Found guest data:', guestData);
+                    }
+                }
+            }
+        }
 
         if (!bookings || bookings.length === 0) {
             return sendResponse(res, 404, false, 'Customer not found', { found: false });
@@ -641,46 +699,93 @@ exports.searchCustomer = async (req, res, next) => {
         // Get customer info from the most recent booking
         const latestBooking = bookings[0];
 
-        // Calculate statistics
+        // Calculate statistics (for guests, only count bookings where they were present)
         const totalBookings = bookings.length;
-        const totalSpent = bookings.reduce((sum, booking) => sum + (booking.rent || 0), 0);
+        const totalSpent = isGuest ? 0 : bookings.reduce((sum, booking) => sum + (booking.rent || 0), 0); // Don't calculate spent amount for guests
         const lastVisit = latestBooking.checkIn;
 
-        const customerData = {
-            name: latestBooking.customerName,
-            mobile: latestBooking.customerMobile,
-            aadhaar: latestBooking.customerAadhaar,
-            totalBookings,
-            totalSpent,
-            lastVisit,
-            visitCount: totalBookings,
-            // Include document information from the latest booking if available
-            documents: latestBooking.documents || [],
-            documentTypes: latestBooking.documentTypes || [],
-            aadhaarFrontUrl: null,
-            aadhaarBackUrl: null,
-            bookings: bookings.map(booking => ({
-                _id: booking._id,
-                serialNo: booking.serialNo,
-                entryNo: booking.entryNo,
-                room: booking.room,
-                rent: booking.rent,
-                checkIn: booking.checkIn,
-                checkOut: booking.checkOut,
-                status: booking.status,
-                totalAmount: booking.totalAmount || booking.rent
-            }))
-        };
+        let customerData;
 
-        // Extract Aadhaar document URLs if available
-        if (latestBooking.documents && latestBooking.documentTypes) {
-            latestBooking.documentTypes.forEach((type, index) => {
-                if (type === 'aadhaar-front' && latestBooking.documents[index]) {
-                    customerData.aadhaarFrontUrl = latestBooking.documents[index];
-                } else if (type === 'aadhaar-back' && latestBooking.documents[index]) {
-                    customerData.aadhaarBackUrl = latestBooking.documents[index];
-                }
-            });
+        if (isGuest && guestData) {
+            // Return guest data
+            customerData = {
+                name: guestData.name,
+                mobile: guestData.mobile,
+                aadhaar: guestData.aadhaar,
+                totalBookings,
+                totalSpent,
+                lastVisit,
+                visitCount: totalBookings,
+                isGuest: true,
+                // For guests, try to get document URLs from guest data
+                documents: guestData.documents || [],
+                documentTypes: guestData.documentTypes || [],
+                aadhaarFrontUrl: null,
+                aadhaarBackUrl: null,
+                bookings: bookings.map(booking => ({
+                    _id: booking._id,
+                    serialNo: booking.serialNo,
+                    entryNo: booking.entryNo,
+                    room: booking.room,
+                    rent: booking.rent,
+                    checkIn: booking.checkIn,
+                    checkOut: booking.checkOut,
+                    status: booking.status,
+                    totalAmount: booking.totalAmount || booking.rent,
+                    role: 'guest' // Indicate this person was a guest in these bookings
+                }))
+            };
+
+            // Extract guest document URLs if available
+            if (guestData.documents && guestData.documentTypes) {
+                guestData.documentTypes.forEach((type, index) => {
+                    if (type === 'aadhaar-front' && guestData.documents[index]) {
+                        customerData.aadhaarFrontUrl = guestData.documents[index];
+                    } else if (type === 'aadhaar-back' && guestData.documents[index]) {
+                        customerData.aadhaarBackUrl = guestData.documents[index];
+                    }
+                });
+            }
+        } else {
+            // Return main customer data
+            customerData = {
+                name: latestBooking.customerName,
+                mobile: latestBooking.customerMobile,
+                aadhaar: latestBooking.customerAadhaar,
+                totalBookings,
+                totalSpent,
+                lastVisit,
+                visitCount: totalBookings,
+                isGuest: false,
+                // Include document information from the latest booking if available
+                documents: latestBooking.documents || [],
+                documentTypes: latestBooking.documentTypes || [],
+                aadhaarFrontUrl: null,
+                aadhaarBackUrl: null,
+                bookings: bookings.map(booking => ({
+                    _id: booking._id,
+                    serialNo: booking.serialNo,
+                    entryNo: booking.entryNo,
+                    room: booking.room,
+                    rent: booking.rent,
+                    checkIn: booking.checkIn,
+                    checkOut: booking.checkOut,
+                    status: booking.status,
+                    totalAmount: booking.totalAmount || booking.rent,
+                    role: 'main' // Indicate this person was the main customer
+                }))
+            };
+
+            // Extract main customer document URLs if available
+            if (latestBooking.documents && latestBooking.documentTypes) {
+                latestBooking.documentTypes.forEach((type, index) => {
+                    if (type === 'aadhaar-front' && latestBooking.documents[index]) {
+                        customerData.aadhaarFrontUrl = latestBooking.documents[index];
+                    } else if (type === 'aadhaar-back' && latestBooking.documents[index]) {
+                        customerData.aadhaarBackUrl = latestBooking.documents[index];
+                    }
+                });
+            }
         }
 
         sendResponse(res, 200, true, 'Customer found', {
