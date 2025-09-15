@@ -661,7 +661,7 @@ exports.searchCustomer = async (req, res, next) => {
 
             if (guestSearchQuery.length > 0) {
                 console.log('Searching for guest with query:', guestSearchQuery);
-                
+
                 const guestBookings = await Booking.find({
                     $or: guestSearchQuery
                 }).sort({ createdAt: -1 });
@@ -675,17 +675,17 @@ exports.searchCustomer = async (req, res, next) => {
                     // Find the specific guest data from the most recent booking
                     const latestBooking = guestBookings[0];
                     console.log('Latest booking additional guests:', latestBooking.additionalGuests);
-                    
+
                     if (latestBooking.additionalGuests && latestBooking.additionalGuests.length > 0) {
                         const targetAadhaar = aadhaar.includes('-') ? aadhaar : formattedAadhaar;
                         console.log('Looking for guest with aadhaar:', targetAadhaar, 'or mobile:', mobile);
-                        
+
                         guestData = latestBooking.additionalGuests.find(guest => {
                             console.log('Checking guest:', guest.name, 'mobile:', guest.mobile, 'aadhaar:', guest.aadhaar);
                             return (mobile && guest.mobile === mobile) ||
-                                   (aadhaar && guest.aadhaar === targetAadhaar);
+                                (aadhaar && guest.aadhaar === targetAadhaar);
                         });
-                        
+
                         console.log('Found guest data:', guestData);
                     }
                 }
