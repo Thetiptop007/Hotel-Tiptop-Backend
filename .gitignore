@@ -92,3 +92,4 @@ Thumbs.db
 dist/
 build/
 .env
+.env.*.local

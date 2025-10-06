@@ -11,7 +11,7 @@ exports.getBookings = async (req, res, next) => {
         console.log('Getting bookings - Query params:', req.query);
 
         const page = parseInt(req.query.page) || 1;
-        const limit = Math.min(parseInt(req.query.limit) || 10, 100); // Limit max page size
+        const limit = Math.min(parseInt(req.query.limit) || 20, 100); // Limit max page size, default to 20
         const skip = (page - 1) * limit;
         const search = req.query.search || '';
         const status = req.query.status;

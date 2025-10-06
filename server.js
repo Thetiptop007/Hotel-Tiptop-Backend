@@ -31,10 +31,45 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// CORS configuration
+// CORS configuration - Only allow specific origins from FRONTEND_URL
+const allowedOrigins = process.env.FRONTEND_URL
+    ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
+    : [];
+
+console.log('Allowed CORS origins:', allowedOrigins);
+
+// Log all requests with origin information for security monitoring
+app.use((req, res, next) => {
+    const origin = req.get('Origin') || req.get('Referer') || 'direct';
+    const userAgent = req.get('User-Agent') || 'unknown';
+
+    if (process.env.NODE_ENV === 'development') {
+        console.log(`${req.method} ${req.path} - Origin: ${origin} - UserAgent: ${userAgent.substring(0, 50)}...`);
+    }
+    next();
+});
+
 app.use(cors({
-    origin: process.env.FRONTEND_URL,
+    origin: function (origin, callback) {
+        // For development: Allow requests with no origin only if localhost is in allowed origins
+        const allowNoOrigin = process.env.NODE_ENV === 'development' &&
+            allowedOrigins.some(url => url.includes('localhost'));
+
+        if (!origin && allowNoOrigin) {
+            return callback(null, true);
+        }
+
+        // Check if the origin is in our allowed list
+        if (origin && allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            console.log(`CORS blocked request from origin: ${origin || 'no origin'}`);
+            callback(new Error(`Access denied by CORS policy. Origin '${origin}' is not allowed.`));
+        }
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 }));
 
 // Body parsing middleware
